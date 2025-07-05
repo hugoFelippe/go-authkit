@@ -1,187 +1,292 @@
-# go-authkit: Plano de Implementação
+# 📋 Plano de Implementação - go-authkit
 
-Este documento descreve o plano de implementação para o projeto go-authkit, definindo as tarefas necessárias para desenvolver uma camada de abstração leve sobre bibliotecas de autenticação e autorização existentes em Go.
+Este documento detalha o plano completo de implementação do go-authkit, seguindo os princípios de abstração leve e integração com bibliotecas maduras existentes.
 
-## Visão e Objetivos
+## 🎯 Objetivo Principal
 
-go-authkit é uma **camada de abstração leve** projetada para:
+Criar uma camada de abstração unificada sobre bibliotecas populares de autenticação e autorização, sem reinventar implementações existentes, mas fornecendo uma API simples e configuração unificada.
 
-1. Fornecer uma interface unificada e consistente sobre as principais bibliotecas de autenticação em Go
-2. Simplificar a configuração e implementação de sistemas de autenticação em projetos Go
-3. Permitir que desenvolvedores evitem reimplementar lógicas de autenticação comuns
-4. Facilitar a troca de bibliotecas subjacentes sem alterar o código de negócio
+## 📦 Fases de Implementação
 
-**O que go-authkit NÃO é**:
-- Não é uma reimplementação completa de protocolos OAuth2/OIDC
-- Não é um framework web ou de rotas
-- Não é uma solução de banco de dados ou persistência
+### 🔥 **Fase 1: Core Foundation (Prioridade Alta)**
 
-## Prioridades de Desenvolvimento
+#### 1.1 Estruturas Base
+- [ ] **types.go** - Tipos e estruturas compartilhadas
+  - [ ] Claims (JWT/OAuth2/API Key)
+  - [ ] User/Principal
+  - [ ] TokenInfo
+  - [ ] AuthContext
+  - [ ] Scope/Permission structs
 
-1. **Fundação (P0)**: Interfaces básicas e sistema de configuração unificado
-2. **Adaptadores (P1)**: Wrappers para bibliotecas populares (OAuth2, OIDC, JWT)
-3. **Middlewares (P1)**: Middlewares agnósticos de framework para validação
-4. **Armazenamento (P2)**: Interfaces de armazenamento e implementação mínima em memória
-5. **Exemplos (P2)**: Exemplos completos de integração com frameworks populares
+- [ ] **errors.go** - Definições de erros específicos
+  - [ ] ErrInvalidToken
+  - [ ] ErrExpiredToken
+  - [ ] ErrInsufficientScope
+  - [ ] ErrInvalidCredentials
+  - [ ] ErrUnauthorized
+  - [ ] ErrForbidden
 
-## Tarefas por Módulo
+- [ ] **interfaces.go** - Interfaces principais
+  - [ ] TokenValidator
+  - [ ] TokenGenerator
+  - [ ] UserProvider
+  - [ ] PermissionChecker
+  - [ ] Storage interfaces
 
-### 1. Core (`/`)
+#### 1.2 Configuração e Ponto de Entrada
+- [ ] **config.go** - Sistema de configuração com opções funcionais
+  - [ ] Config struct base
+  - [ ] DefaultConfig()
+  - [ ] Opções funcionais (WithIssuer, WithTokenExpiry, etc.)
+  - [ ] Validação de configuração
 
-- [ ] **auth.go**: 
-  - [ ] Definir estrutura principal `AuthKit`
-  - [ ] Implementar construtores e métodos de inicialização
-  - [ ] Implementar métodos de factory para adaptadores
+- [ ] **auth.go** - Ponto de entrada principal
+  - [ ] AuthKit struct principal
+  - [ ] New() constructor com options pattern
+  - [ ] Métodos principais (TokenValidator, GenerateToken, etc.)
+  - [ ] Integração com storage
 
-- [ ] **config.go**:
-  - [ ] Implementar estrutura `Config` minimalista
-  - [ ] Criar funções Options para configuração funcional
-  - [ ] Implementar validação de configuração
+### 🚀 **Fase 2: Token Management (Prioridade Alta)**
 
-- [ ] **errors.go**:
-  - [ ] Definir erros específicos da biblioteca
-  - [ ] Implementar helpers para wrap de erros
-  - [ ] Criar constantes para códigos de erro
+#### 2.1 JWT Support
+- [ ] **token/jwt.go** - Adaptador para golang-jwt/jwt
+  - [ ] JWTManager struct
+  - [ ] Suporte a diferentes signing methods (HS256, RS256, ES256)
+  - [ ] GenerateToken com claims customizáveis
+  - [ ] ValidateToken com verificação de exp, iat, iss
+  - [ ] Refresh token support
 
-- [ ] **interfaces.go**:
-  - [ ] Definir interfaces base: `TokenValidator`, `TokenGenerator`
-  - [ ] Interfaces para adaptadores de biblioteca
-  - [ ] Interfaces para armazenamento
+- [ ] **token/validator.go** - Interface unificada de validação
+  - [ ] Validator interface
+  - [ ] Implementação base
+  - [ ] Chain of validators
+  - [ ] Context-aware validation
 
-- [ ] **types.go**:
-  - [ ] Definir estruturas de dados comuns: `Token`, `Claims`
-  - [ ] Definir enums para tipos de autenticação
-  - [ ] Manter estruturas simples e interoperáveis
+- [ ] **token/manager.go** - Gerenciamento unificado
+  - [ ] TokenManager interface
+  - [ ] Implementação que combina diferentes tipos
+  - [ ] Token introspection
+  - [ ] Token revocation
 
-### 2. Adapter (`/adapter`)
+#### 2.2 API Keys Support
+- [ ] **token/apikey.go** - Gerenciamento de API Keys
+  - [ ] APIKeyManager struct
+  - [ ] Geração de chaves com prefixos
+  - [ ] Validação e lookup
+  - [ ] Suporte a diferentes formatos (header, query, body)
 
-- [ ] **oauth2.go**:
-  - [ ] Implementar adaptadores para bibliotecas OAuth2 populares (go-oauth2, oauth2)
-  - [ ] Configuração simplificada para fluxos Authorization Code, Client Credentials, Password, Refresh Token
-  - [ ] Mapeamento para interfaces do authkit
+### 🔐 **Fase 3: Storage Abstraction (Prioridade Media)**
 
-- [ ] **oidc.go**:
-  - [ ] Implementar adaptadores para bibliotecas OIDC populares (go-oidc)
-  - [ ] Gerenciamento de descoberta e validação
-  - [ ] Parsing e validação de ID tokens
-  - [ ] Mapeamento de claims e userinfo
+#### 3.1 Storage Interfaces
+- [ ] **storage/interfaces.go** - Definições de interfaces
+  - [ ] TokenStorage interface
+  - [ ] UserStorage interface
+  - [ ] SessionStorage interface
+  - [ ] ConfigStorage interface
 
-- [ ] **jwt.go**:
-  - [ ] Implementar adaptadores para bibliotecas JWT (jwt-go, go-jose)
-  - [ ] Configuração simplificada de assinaturas e validação
-  - [ ] Suporte para RS256, HS256, ES256
+- [ ] **storage/memory.go** - Implementação em memória
+  - [ ] MemoryStorage struct
+  - [ ] Thread-safe operations
+  - [ ] TTL support para tokens
+  - [ ] Cleanup de tokens expirados
 
-- [ ] **apikey.go**:
-  - [ ] Implementar adaptadores para validação e geração de API Keys
-  - [ ] Estratégias flexíveis para armazenamento e validação
-  - [ ] Suporte para metadados e escopos em API Keys
+### 🛡️ **Fase 4: Middleware Layer (Prioridade Media)**
 
-- [ ] **sso.go**:
-  - [ ] Interfaces abstratas para provedores SSO
-  - [ ] Adaptadores para OAuth2/OIDC como SSO
-  - [ ] Abstração de processos de mapeamento de identidade
+#### 4.1 Core Middleware
+- [ ] **middleware/auth.go** - Middleware básico framework-agnóstico
+  - [ ] AuthMiddleware struct
+  - [ ] HTTP Handler wrapper
+  - [ ] Token extraction (Bearer, header, query, cookie)
+  - [ ] Context injection de claims
 
-### 3. Middleware (`/middleware`)
+- [ ] **middleware/scope.go** - Verificação de escopos
+  - [ ] ScopeMiddleware
+  - [ ] RequiredScopes validation
+  - [ ] OAuth2 scope format support
 
-- [ ] **auth.go**:
-  - [ ] Implementar middleware base agnóstico de framework
-  - [ ] Extração de tokens de várias fontes (header, cookie, query)
-  - [ ] Validação e processamento de tokens
+#### 4.2 Framework Wrappers
+- [ ] **middleware/wrapper.go** - Adaptadores para frameworks
+  - [ ] GinMiddleware para Gin
+  - [ ] EchoMiddleware para Echo
+  - [ ] FiberMiddleware para Fiber
+  - [ ] ChiMiddleware para Chi
+  - [ ] Generic HTTP middleware
 
-- [ ] **scope.go**:
-  - [ ] Middleware para validação de escopos
-  - [ ] Extração e comparação de claims
-  - [ ] Gestão de permissões baseadas em escopos
+### 🔌 **Fase 5: External Adapters (Prioridade Media)**
 
-- [ ] **wrapper.go**:
-  - [ ] Implementar wrappers para frameworks populares (standard HTTP, Gin, Echo, Fiber)
-  - [ ] Adaptação de middleware agnóstico para frameworks específicos
-  - [ ] Helpers para passagem de contexto
+#### 5.1 OAuth2 Integration
+- [ ] **adapter/oauth2.go** - Adaptador para golang.org/x/oauth2
+  - [ ] OAuth2Adapter struct
+  - [ ] Authorization URL generation
+  - [ ] Token exchange
+  - [ ] Token refresh
+  - [ ] Multi-provider support
 
-### 4. Token (`/token`)
+#### 5.2 OIDC Integration
+- [ ] **adapter/oidc.go** - Adaptador para coreos/go-oidc
+  - [ ] OIDCAdapter struct
+  - [ ] Discovery document handling
+  - [ ] ID Token validation
+  - [ ] UserInfo endpoint integration
+  - [ ] JWKS handling
 
-- [ ] **manager.go**:
-  - [ ] Interface unificada para gerenciamento de tokens
-  - [ ] Métodos para validação, geração e revogação
-  - [ ] Abstração sobre diferentes tipos de tokens
+#### 5.3 SSO Providers
+- [ ] **adapter/sso.go** - Adaptadores para provedores SSO
+  - [ ] Google OAuth2/OIDC
+  - [ ] Microsoft Azure AD
+  - [ ] GitHub OAuth2
+  - [ ] Generic OIDC provider
+  - [ ] SAML adapter (future)
 
-- [ ] **jwt.go**:
-  - [ ] Configuração simplificada para JWT
-  - [ ] Adaptadores para bibliotecas JWT populares
-  - [ ] Helpers para manipulação de claims
+### 🔒 **Fase 6: Permissions & Authorization (Prioridade Baixa)**
 
-- [ ] **validator.go**:
-  - [ ] Validadores genéricos de tokens
-  - [ ] Verificações de expiração, emissor, audiência
-  - [ ] Interface para validação customizada
+#### 6.1 RBAC Support
+- [ ] **permissions/rbac.go** - Role-Based Access Control
+  - [ ] Role/Permission definitions
+  - [ ] RBACChecker interface
+  - [ ] Role hierarchy support
+  - [ ] Role assignment/validation
 
-### 5. Storage (`/storage`)
+#### 6.2 ABAC Support
+- [ ] **permissions/abac.go** - Attribute-Based Access Control
+  - [ ] Policy engine interface
+  - [ ] Attribute evaluation
+  - [ ] Rule-based permissions
+  - [ ] Context-aware decisions
 
-- [ ] **interfaces.go**:
-  - [ ] Definir interfaces mínimas de armazenamento
-  - [ ] Métodos para tokens, sessões
-  - [ ] Design para extensibilidade
+#### 6.3 Scope Utilities
+- [ ] **permissions/scope.go** - Utilitários para escopos
+  - [ ] Scope parsing e validation
+  - [ ] Hierarchical scopes
+  - [ ] Scope intersection/union
+  - [ ] OAuth2 scope compliance
 
-- [ ] **memory.go**:
-  - [ ] Implementar armazenamento em memória básico
-  - [ ] Para testes e protótipos rápidos
-  - [ ] Gestão de expiração simples
+### 📚 **Fase 7: Examples & Documentation (Prioridade Baixa)**
 
-### 6. Permissions (`/permissions`)
+#### 7.1 Basic Examples
+- [ ] **examples/basic/** - Exemplo básico com JWT
+  - [ ] Simple HTTP server
+  - [ ] Token generation/validation
+  - [ ] Protected endpoints
 
-- [ ] **rbac.go**:
-  - [ ] Adaptadores para bibliotecas RBAC existentes
-  - [ ] Interface simples para verificação de papéis
-  - [ ] Integração com claims de tokens
+- [ ] **examples/gin/** - Integração com Gin
+  - [ ] Gin app completa
+  - [ ] Login/logout endpoints
+  - [ ] Protected routes
 
-- [ ] **abac.go**:
-  - [ ] Adaptadores para sistemas ABAC
-  - [ ] Avaliação de políticas baseadas em atributos
-  - [ ] Configuração simplificada de políticas
+- [ ] **examples/oauth2/** - OAuth2 flow completo
+  - [ ] Authorization code flow
+  - [ ] Google OAuth2 integration
+  - [ ] Token refresh
 
-- [ ] **scope.go**:
-  - [ ] Utilitários para validação e verificação de escopos
-  - [ ] Mapeamento de escopos para permissões
-  - [ ] Integração com validação de tokens
+#### 7.2 Advanced Examples
+- [ ] **examples/microservices/** - Setup para microserviços
+  - [ ] Token validation entre serviços
+  - [ ] API Gateway integration
+  - [ ] Service-to-service auth
 
-## Plano de Fases
+- [ ] **examples/rbac/** - Sistema completo com RBAC
+  - [ ] User management
+  - [ ] Role assignment
+  - [ ] Permission checking
 
-### Fase 1: Fundação e Abstração
-- Core + Interfaces + Configuração
-- Adaptador JWT básico 
-- Armazenamento em memória para exemplos
-- Documentação de visão e arquitetura
+### 🧪 **Fase 8: Testing & Quality (Contínuo)**
 
-### Fase 2: Adaptadores Básicos e Middlewares
-- Adaptadores para JWT e OAuth2 (fluxo Authorization Code)
-- Adaptador simples para API Keys
-- Middlewares agnósticos de framework
-- Wrappers para frameworks web populares
-- Exemplos básicos de uso
+#### 8.1 Unit Tests
+- [ ] Testes para todos os componentes core
+- [ ] Mocks para interfaces externas
+- [ ] Coverage > 80%
 
-### Fase 3: Adaptadores Completos
-- Todos os fluxos OAuth2 e OIDC
-- Integração SSO
-- Sistema básico de RBAC/ABAC
-- Validação e verificação de escopos
-- Exemplos para cada adaptador
+#### 8.2 Integration Tests
+- [ ] Testes de integração com bibliotecas reais
+- [ ] End-to-end flow testing
+- [ ] Performance benchmarks
 
-### Fase 4: Extensão e Documentação
-- Exemplos completos de integração
-- Documentação detalhada de uso
-- Guias de migração e extensibilidade
-- Exemplos de implementações de storage personalizadas
+#### 8.3 Documentation
+- [ ] GoDoc completo
+- [ ] Tutorial de getting started
+- [ ] Migration guides
+- [ ] Best practices guide
 
-## Métricas de Progresso
+## 🛠️ Dependências Externas
 
-- **Cobertura de testes**: Meta de 85%+ para todos os pacotes
-- **Documentação**: Todas as funções exportadas devem ter comentários godoc
-- **Exemplos funcionais**: Exemplos completos para cada adaptador e caso de uso comum
+### Core Dependencies (Já Incluídas)
+- [x] `github.com/golang-jwt/jwt/v5` - JWT handling
 
-## Considerações de Design
+### Planned Dependencies
+- [ ] `golang.org/x/oauth2` - OAuth2 client
+- [ ] `github.com/coreos/go-oidc/v3` - OIDC support
+- [ ] `golang.org/x/crypto` - Cryptographic utilities (se necessário)
 
-- **Minimalista**: Fornecer apenas o essencial para conectar bibliotecas existentes
-- **Composable**: Componentes devem funcionar bem juntos, mas ser utilizáveis separadamente
-- **Não-opinativo**: Não forçar escolhas de frameworks ou armazenamento
-- **Extensível**: Fácil de estender para casos de uso específicos
-- **Focado**: Fazer uma coisa bem - ser uma camada de configuração/abstração, não reimplementar
+### Framework Adapters (Optional)
+- [ ] `github.com/gin-gonic/gin` - Para Gin middleware
+- [ ] `github.com/labstack/echo/v4` - Para Echo middleware
+- [ ] `github.com/gofiber/fiber/v2` - Para Fiber middleware
+- [ ] `github.com/go-chi/chi/v5` - Para Chi middleware
+
+## 📋 Critérios de Aceitação
+
+### ✅ Funcionalidades Mínimas (MVP)
+1. ✅ Geração e validação de JWT tokens
+2. ✅ Middleware básico para net/http
+3. ✅ Configuração via options pattern
+4. ✅ Storage em memória funcional
+5. ✅ Exemplo básico funcionando
+
+### 🎯 Funcionalidades Avançadas
+1. OAuth2/OIDC integration completa
+2. Suporte a múltiplos frameworks web
+3. Sistema de permissões (RBAC/ABAC)
+4. API Key management
+5. SSO provider adapters
+
+## 🚦 Marcos de Entrega
+
+### 🏁 Milestone 1: Core Foundation (Semana 1)
+- Implementação completa das Fases 1 e 2
+- Testes unitários básicos
+- Exemplo mínimo funcionando
+
+### 🏁 Milestone 2: Middleware & Storage (Semana 2)
+- Implementação das Fases 3 e 4
+- Framework adapters principais
+- Exemplos com frameworks populares
+
+### 🏁 Milestone 3: External Integration (Semana 3)
+- Implementação da Fase 5
+- OAuth2/OIDC adapters
+- SSO provider examples
+
+### 🏁 Milestone 4: Advanced Features (Semana 4)
+- Implementação da Fase 6
+- Sistema de permissões
+- Documentação completa
+
+### 🏁 Milestone 5: Production Ready (Semana 5)
+- Testes de integração completos
+- Performance optimization
+- Security audit
+- Release v1.0.0
+
+## 📝 Notas de Implementação
+
+### Princípios de Design
+1. **Interfaces First**: Definir interfaces antes de implementações
+2. **Adapter Pattern**: Usar adaptadores para bibliotecas externas
+3. **Options Pattern**: Configuração flexível via opções funcionais
+4. **Minimal Dependencies**: Adicionar dependências apenas quando necessário
+5. **Backward Compatibility**: Manter compatibilidade entre versões
+
+### Convenções de Código
+1. Seguir Go conventions (gofmt, golint, go vet)
+2. Documentação completa com exemplos
+3. Error handling explícito e específico
+4. Context-aware operations
+5. Thread-safe implementations quando aplicável
+
+### Considerações de Performance
+1. Lazy loading de componentes pesados
+2. Connection pooling para external services
+3. Caching de tokens e configurações
+4. Minimal allocations em hot paths
+5. Benchmarks para operações críticas
