@@ -11,40 +11,40 @@ Criar uma camada de abstração unificada sobre bibliotecas populares de autenti
 ### 🔥 **Fase 1: Core Foundation (Prioridade Alta)**
 
 #### 1.1 Estruturas Base
-- [ ] **types.go** - Tipos e estruturas compartilhadas
-  - [ ] Claims (JWT/OAuth2/API Key)
-  - [ ] User/Principal
-  - [ ] TokenInfo
-  - [ ] AuthContext
-  - [ ] Scope/Permission structs
+- [x] **types.go** - Tipos e estruturas compartilhadas
+  - [x] Claims (JWT/OAuth2/API Key)
+  - [x] User/Principal
+  - [x] TokenInfo
+  - [x] AuthContext
+  - [x] Scope/Permission structs
 
-- [ ] **errors.go** - Definições de erros específicos
-  - [ ] ErrInvalidToken
-  - [ ] ErrExpiredToken
-  - [ ] ErrInsufficientScope
-  - [ ] ErrInvalidCredentials
-  - [ ] ErrUnauthorized
-  - [ ] ErrForbidden
+- [x] **errors.go** - Definições de erros específicos
+  - [x] ErrInvalidToken
+  - [x] ErrExpiredToken
+  - [x] ErrInsufficientScope
+  - [x] ErrInvalidCredentials
+  - [x] ErrUnauthorized
+  - [x] ErrForbidden
 
-- [ ] **interfaces.go** - Interfaces principais
-  - [ ] TokenValidator
-  - [ ] TokenGenerator
-  - [ ] UserProvider
-  - [ ] PermissionChecker
-  - [ ] Storage interfaces
+- [x] **interfaces.go** - Interfaces principais
+  - [x] TokenValidator
+  - [x] TokenGenerator
+  - [x] UserProvider
+  - [x] PermissionChecker
+  - [x] Storage interfaces
 
 #### 1.2 Configuração e Ponto de Entrada
-- [ ] **config.go** - Sistema de configuração com opções funcionais
-  - [ ] Config struct base
-  - [ ] DefaultConfig()
-  - [ ] Opções funcionais (WithIssuer, WithTokenExpiry, etc.)
-  - [ ] Validação de configuração
+- [x] **config.go** - Sistema de configuração com opções funcionais
+  - [x] Config struct base
+  - [x] DefaultConfig()
+  - [x] Opções funcionais (WithIssuer, WithTokenExpiry, etc.)
+  - [x] Validação de configuração
 
-- [ ] **auth.go** - Ponto de entrada principal
-  - [ ] AuthKit struct principal
-  - [ ] New() constructor com options pattern
-  - [ ] Métodos principais (TokenValidator, GenerateToken, etc.)
-  - [ ] Integração com storage
+- [x] **auth.go** - Ponto de entrada principal
+  - [x] AuthKit struct principal
+  - [x] New() constructor com options pattern
+  - [x] Métodos principais (TokenValidator, GenerateToken, etc.)
+  - [x] Integração com storage
 
 ### 🚀 **Fase 2: Token Management (Prioridade Alta)**
 
