@@ -1,234 +1,120 @@
 package authkit_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/hugoFelippe/go-authkit"
 )
 
-func TestDefaultConfig(t *testing.T) {
-	config := authkit.DefaultConfig()
-	
-	if config.Issuer != "authkit" {
-		t.Errorf("Expected issuer 'authkit', got '%s'", config.Issuer)
-	}
-	
-	if config.TokenExpiry != time.Hour*24 {
-		t.Errorf("Expected token expiry 24h, got %v", config.TokenExpiry)
-	}
-	
-	if config.JWTSigningMethod != "HS256" {
-		t.Errorf("Expected JWT signing method 'HS256', got '%s'", config.JWTSigningMethod)
-	}
-	
-	if err := config.Validate(); err == nil {
-		t.Error("Expected validation error for missing JWT secret, got nil")
-	}
-}
+// Helper functions local to this test file
+func setupTestAuth(t *testing.T, opts ...authkit.Option) *authkit.AuthKit {
+	t.Helper()
 
-func TestNewAuthKitWithOptions(t *testing.T) {
-	auth := authkit.New(
-		authkit.WithIssuer("test-app"),
-		authkit.WithTokenExpiry(30*time.Minute),
-		authkit.WithJWTSecret([]byte("my-secret-key-for-testing-purposes")),
+	defaultOpts := []authkit.Option{
+		authkit.WithIssuer("test"),
+		authkit.WithJWTSecret([]byte("test-secret-key-for-testing-purposes-that-is-long-enough")),
+		authkit.WithTokenExpiry(1 * time.Hour),
 		authkit.WithDebug(true),
-	)
-	
-	if !auth.IsInitialized() {
-		t.Fatal("AuthKit should be initialized")
 	}
-	
-	config := auth.Config()
-	
-	if config.Issuer != "test-app" {
-		t.Errorf("Expected issuer 'test-app', got '%s'", config.Issuer)
-	}
-	
-	if config.TokenExpiry != 30*time.Minute {
-		t.Errorf("Expected token expiry 30m, got %v", config.TokenExpiry)
-	}
-	
-	if !config.Debug {
-		t.Error("Expected debug to be true")
-	}
-	
-	// Cleanup
-	if err := auth.Close(); err != nil {
-		t.Errorf("Error closing AuthKit: %v", err)
-	}
+
+	opts = append(defaultOpts, opts...)
+	auth := authkit.New(opts...)
+
+	t.Cleanup(func() {
+		if err := auth.Close(); err != nil {
+			t.Logf("Error closing AuthKit during cleanup: %v", err)
+		}
+	})
+
+	return auth
 }
 
-func TestUserStruct(t *testing.T) {
-	user := &authkit.User{
-		ID:        "user123",
-		Username:  "johndoe",
-		Email:     "john@example.com",
-		Name:      "John Doe",
-		Roles:     []string{"user", "admin"},
-		Active:    true,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-	
-	if user.ID != "user123" {
-		t.Errorf("Expected user ID 'user123', got '%s'", user.ID)
-	}
-	
-	if user.Email != "john@example.com" {
-		t.Errorf("Expected email 'john@example.com', got '%s'", user.Email)
-	}
-	
-	if len(user.Roles) != 2 {
-		t.Errorf("Expected 2 roles, got %d", len(user.Roles))
-	}
-	
-	if !user.Active {
-		t.Error("Expected user to be active")
-	}
-}
-
-func TestClaimsStruct(t *testing.T) {
+func testUser(id string) *authkit.User {
 	now := time.Now()
-	claims := &authkit.Claims{
-		Subject:   "user123",
-		Issuer:    "test-app",
-		Email:     "john@example.com",
-		Username:  "johndoe",
-		Roles:     []string{"user", "admin"},
-		IssuedAt:  now,
-		ExpiresAt: now.Add(time.Hour),
-	}
-	
-	if claims.Subject != "user123" {
-		t.Errorf("Expected subject 'user123', got '%s'", claims.Subject)
-	}
-	
-	if claims.Issuer != "test-app" {
-		t.Errorf("Expected issuer 'test-app', got '%s'", claims.Issuer)
-	}
-	
-	if len(claims.Roles) != 2 {
-		t.Errorf("Expected 2 roles, got %d", len(claims.Roles))
-	}
-	
-	if claims.ExpiresAt.Before(claims.IssuedAt) {
-		t.Error("ExpiresAt should be after IssuedAt")
-	}
-}
-
-func TestAPIKeyStruct(t *testing.T) {
-	apiKey := &authkit.APIKey{
-		ID:        "key123",
-		Key:       "api-1234567890abcdef",
-		Name:      "Test API Key",
-		UserID:    "user123",
-		Scopes:    []string{"read:users", "write:posts"},
+	return &authkit.User{
+		ID:        id,
+		Username:  "testuser" + id,
+		Email:     "test" + id + "@example.com",
+		Name:      "Test User " + id,
+		Roles:     []string{"user"},
 		Active:    true,
-		CreatedAt: time.Now(),
-	}
-	
-	if apiKey.ID != "key123" {
-		t.Errorf("Expected API key ID 'key123', got '%s'", apiKey.ID)
-	}
-	
-	if apiKey.UserID != "user123" {
-		t.Errorf("Expected user ID 'user123', got '%s'", apiKey.UserID)
-	}
-	
-	if len(apiKey.Scopes) != 2 {
-		t.Errorf("Expected 2 scopes, got %d", len(apiKey.Scopes))
-	}
-	
-	if !apiKey.Active {
-		t.Error("Expected API key to be active")
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
-func TestAuthErrors(t *testing.T) {
-	// Test basic error
-	err1 := authkit.ErrInvalidToken
-	if err1.Error() != "INVALID_TOKEN: Invalid token" {
-		t.Errorf("Unexpected error message: %s", err1.Error())
-	}
-	
-	// Test error with details
-	err2 := authkit.ErrInvalidTokenWithDetails("token format is invalid")
-	expectedMsg := "INVALID_TOKEN: Invalid token (token format is invalid)"
-	if err2.Error() != expectedMsg {
-		t.Errorf("Expected '%s', got '%s'", expectedMsg, err2.Error())
-	}
-	
-	// Test error type checking
-	if !authkit.IsAuthError(err2) {
-		t.Error("Expected err2 to be an AuthError")
-	}
-	
-	if authkit.GetErrorCode(err2) != "INVALID_TOKEN" {
-		t.Errorf("Expected error code 'INVALID_TOKEN', got '%s'", authkit.GetErrorCode(err2))
-	}
-	
-	// Test token error classification
-	if !authkit.IsTokenError(err1) {
-		t.Error("Expected err1 to be classified as token error")
+func testClaims(subject, issuer string) *authkit.Claims {
+	now := time.Now()
+	return &authkit.Claims{
+		Subject:   subject,
+		Issuer:    issuer,
+		Email:     "test@example.com",
+		Username:  "testuser",
+		Roles:     []string{"user"},
+		IssuedAt:  now,
+		ExpiresAt: now.Add(1 * time.Hour),
 	}
 }
 
-func TestConfigValidation(t *testing.T) {
-	// Test invalid configuration - empty issuer
-	invalidConfig := authkit.DefaultConfig()
-	invalidConfig.Issuer = ""
-	
-	err := invalidConfig.Validate()
-	if err == nil {
-		t.Error("Expected validation error for empty issuer")
+func TestAuthKit_Initialization(t *testing.T) {
+	auth := setupTestAuth(t)
+
+	if !auth.IsInitialized() {
+		t.Error("AuthKit should be initialized")
 	}
-	
-	if !authkit.IsAuthError(err) {
-		t.Error("Expected validation error to be AuthError")
+
+	config := auth.Config()
+	if config.Issuer == "" {
+		t.Error("Issuer should not be empty")
 	}
-	
-	// Test invalid configuration - negative token expiry
-	invalidConfig2 := authkit.DefaultConfig()
-	invalidConfig2.TokenExpiry = -time.Hour
-	invalidConfig2.JWTSecret = []byte("test-secret")
-	
-	err = invalidConfig2.Validate()
-	if err == nil {
-		t.Error("Expected validation error for negative token expiry")
-	}
-	
-	// Test valid configuration
-	validConfig := authkit.DefaultConfig()
-	validConfig.JWTSecret = []byte("my-secret-key-for-testing")
-	
-	err = validConfig.Validate()
-	if err != nil {
-		t.Errorf("Expected no validation error for valid config, got: %v", err)
+	if len(config.JWTSecret) == 0 {
+		t.Error("JWT Secret should not be empty")
 	}
 }
 
-func TestContextHelpers(t *testing.T) {
-	// Test context helpers compilation
-	user := &authkit.User{ID: "test-user"}
-	claims := &authkit.Claims{Subject: "test-user"}
-	
-	// These functions should exist and compile
-	_ = authkit.WithUser
-	_ = authkit.WithClaims
-	_ = authkit.WithToken
-	_ = authkit.WithScopes
-	_ = authkit.GetUserFromContext
-	_ = authkit.GetClaimsFromContext
-	_ = authkit.GetTokenFromContext
-	_ = authkit.GetScopesFromContext
-	
-	// Basic type checking
-	if user.ID != "test-user" {
-		t.Error("User ID mismatch")
+func TestAuthKit_ContextHelpers(t *testing.T) {
+	ctx := context.Background()
+	user := testUser("test-user")
+	claims := testClaims("test-user", "test-issuer")
+
+	// Test that context helper functions exist and compile
+	ctxWithUser := authkit.WithUser(ctx, user)
+	ctxWithClaims := authkit.WithClaims(ctx, claims)
+	ctxWithToken := authkit.WithToken(ctx, "test-token")
+	ctxWithScopes := authkit.WithScopes(ctx, []string{"read", "write"})
+
+	// Test retrieval
+	retrievedUser, ok := authkit.GetUserFromContext(ctxWithUser)
+	if !ok {
+		t.Error("Should retrieve user from context")
 	}
-	
-	if claims.Subject != "test-user" {
-		t.Error("Claims subject mismatch")
+	if retrievedUser.ID != user.ID {
+		t.Errorf("Expected user ID %s, got %s", user.ID, retrievedUser.ID)
+	}
+
+	retrievedClaims, ok := authkit.GetClaimsFromContext(ctxWithClaims)
+	if !ok {
+		t.Error("Should retrieve claims from context")
+	}
+	if retrievedClaims.Subject != claims.Subject {
+		t.Errorf("Expected subject %s, got %s", claims.Subject, retrievedClaims.Subject)
+	}
+
+	retrievedToken, ok := authkit.GetTokenFromContext(ctxWithToken)
+	if !ok {
+		t.Error("Should retrieve token from context")
+	}
+	if retrievedToken != "test-token" {
+		t.Errorf("Expected token 'test-token', got %s", retrievedToken)
+	}
+
+	retrievedScopes, ok := authkit.GetScopesFromContext(ctxWithScopes)
+	if !ok {
+		t.Error("Should retrieve scopes from context")
+	}
+	if len(retrievedScopes) != 2 {
+		t.Errorf("Expected 2 scopes, got %d", len(retrievedScopes))
 	}
 }

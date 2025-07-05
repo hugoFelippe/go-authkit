@@ -122,27 +122,155 @@ func GinAuthMiddleware(auth *AuthKit) gin.HandlerFunc {
 }
 ```
 
-## Testing
+## Development Workflow
 
-Use testes focados na integração entre componentes:
+### Makefile Commands
 
+O projeto usa um Makefile para padronizar comandos de desenvolvimento:
+
+```bash
+# Comandos principais
+make test          # Executa todos os testes
+make test-unit     # Executa apenas testes unitários
+make test-integration # Executa apenas testes de integração
+make test-coverage # Executa testes com coverage
+make test-race     # Executa testes com detector de race conditions
+
+# Qualidade de código
+make lint          # Executa linters
+make fmt           # Formata código
+make vet           # Executa go vet
+make check         # Executa fmt, vet e lint
+
+# Build e install
+make build         # Compila exemplos
+make install       # Instala dependências
+make clean         # Limpa arquivos temporários
+
+# Desenvolvimento
+make watch         # Executa testes automaticamente ao salvar
+make examples      # Executa exemplos
+make deps          # Atualiza dependências
+```
+
+### Testing Strategy
+
+O projeto segue uma estratégia de testes estruturada:
+
+#### 1. Testes Unitários (`*_test.go`)
+- Testam componentes isolados
+- Usam mocks para dependências externas
+- Localização: junto com o código fonte
+
+#### 2. Testes de Integração (`tests/integration/`)
+- Testam integração entre componentes
+- Usam bibliotecas reais quando possível
+- Simulam cenários completos de uso
+
+#### 3. Testes de Exemplo (`tests/examples/`)
+- Validam que exemplos funcionam corretamente
+- Servem como documentação executável
+
+#### 4. Benchmarks (`*_bench_test.go`)
+- Medem performance de operações críticas
+- Validam que não há regressões de performance
+
+### Test Organization
+
+```
+tests/
+├── integration/     # Testes de integração
+│   ├── jwt/        # Testes específicos de JWT
+│   ├── oauth2/     # Testes específicos de OAuth2
+│   └── middleware/ # Testes de middleware
+├── testdata/       # Dados de teste (certificados, keys, etc)
+├── mocks/          # Mocks gerados e customizados
+└── examples/       # Testes dos exemplos
+```
+
+### Testing Patterns
+
+#### Unit Test Pattern
 ```go
 func TestTokenValidation(t *testing.T) {
-    // Configurar AuthKit
+    tests := []struct {
+        name        string
+        token       string
+        wantErr     bool
+        errorCode   string
+    }{
+        {
+            name:      "valid token",
+            token:     "valid.jwt.token",
+            wantErr:   false,
+        },
+        {
+            name:      "invalid token",
+            token:     "invalid",
+            wantErr:   true,
+            errorCode: "INVALID_TOKEN",
+        },
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            auth := setupTestAuth(t)
+            _, err := auth.ValidateToken(context.Background(), tt.token)
+            
+            if tt.wantErr && err == nil {
+                t.Error("expected error but got none")
+            }
+            if !tt.wantErr && err != nil {
+                t.Errorf("unexpected error: %v", err)
+            }
+            if tt.wantErr && authkit.GetErrorCode(err) != tt.errorCode {
+                t.Errorf("expected error code %s, got %s", tt.errorCode, authkit.GetErrorCode(err))
+            }
+        })
+    }
+}
+```
+
+#### Integration Test Pattern
+```go
+func TestJWTIntegration(t *testing.T) {
+    // Setup real JWT adapter
     auth := authkit.New(
+        authkit.WithJWTAdapter(adapter.NewGoJWTAdapter()),
         authkit.WithIssuer("test"),
-        authkit.WithJWTSigningMethod("HS256"),
-        authkit.WithSecret([]byte("secret")),
+        authkit.WithJWTSecret([]byte("secret")),
     )
     
-    // Gerar token para teste
-    token, err := auth.GenerateToken(...)
+    // Generate real token
+    user := &authkit.User{ID: "123", Email: "test@example.com"}
+    token, err := auth.GenerateToken(context.Background(), user)
+    require.NoError(t, err)
     
-    // Validar token
-    claims, err := auth.ValidateToken(token)
+    // Validate token through full pipeline
+    claims, err := auth.ValidateToken(context.Background(), token)
+    require.NoError(t, err)
+    assert.Equal(t, user.ID, claims.Subject)
+}
+```
+
+#### Test Helpers
+```go
+// testutils/setup.go
+func SetupTestAuth(t *testing.T, opts ...authkit.Option) *authkit.AuthKit {
+    defaultOpts := []authkit.Option{
+        authkit.WithIssuer("test"),
+        authkit.WithJWTSecret([]byte("test-secret-key-for-testing-purposes")),
+        authkit.WithDebug(true),
+    }
     
-    // Verificar resultado
-    // ...
+    opts = append(defaultOpts, opts...)
+    auth := authkit.New(opts...)
+    
+    t.Cleanup(func() {
+        auth.Close()
+    })
+    
+    return auth
 }
 ```
 

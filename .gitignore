@@ -16,6 +16,18 @@
 coverage.*
 *.coverprofile
 profile.cov
+coverage.html
+
+# Build artifacts
+go-authkit
+go-authkit_*
+examples/*/main
+examples/*/basic
+examples/*/go-authkit_*
+
+# Temporary files
+*.tmp
+*.temp
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -28,5 +40,20 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Local development
+Makefile.local
