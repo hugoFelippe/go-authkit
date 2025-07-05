@@ -44,7 +44,7 @@ Este pacote foi criado para facilitar a integração de autenticação e autoriz
 
 ```
 /authkit/
-├── auth.go                  # Ponto de entrada principal para a biblioteca
+├── authkit.go               # Ponto de entrada principal para a biblioteca
 ├── config.go                # Configurações unificadas
 ├── errors.go                # Definições de erros específicos
 ├── interfaces.go            # Interfaces comuns e extensíveis
