@@ -1,10 +1,14 @@
 package testutils
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/hugoFelippe/go-authkit"
+	"github.com/hugoFelippe/go-authkit/contracts"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // SetupTestAuth creates a test AuthKit instance with sensible defaults
@@ -31,9 +35,9 @@ func SetupTestAuth(t *testing.T, opts ...authkit.Option) *authkit.AuthKit {
 }
 
 // TestUser creates a test user with default values
-func TestUser(id string) *authkit.User {
+func TestUser(id string) *contracts.User {
 	now := time.Now()
-	return &authkit.User{
+	return &contracts.User{
 		ID:        id,
 		Username:  "testuser" + id,
 		Email:     "test" + id + "@example.com",
@@ -46,16 +50,16 @@ func TestUser(id string) *authkit.User {
 }
 
 // TestUserWithRoles creates a test user with specific roles
-func TestUserWithRoles(id string, roles []string) *authkit.User {
+func TestUserWithRoles(id string, roles []string) *contracts.User {
 	user := TestUser(id)
 	user.Roles = roles
 	return user
 }
 
 // TestAPIKey creates a test API key
-func TestAPIKey(id, userID string) *authkit.APIKey {
+func TestAPIKey(id, userID string) *contracts.APIKey {
 	now := time.Now()
-	return &authkit.APIKey{
+	return &contracts.APIKey{
 		ID:        id,
 		Key:       "test-api-key-" + id,
 		Name:      "Test API Key " + id,
@@ -68,9 +72,9 @@ func TestAPIKey(id, userID string) *authkit.APIKey {
 }
 
 // TestClaims creates test claims
-func TestClaims(subject, issuer string) *authkit.Claims {
+func TestClaims(subject, issuer string) *contracts.Claims {
 	now := time.Now()
-	return &authkit.Claims{
+	return &contracts.Claims{
 		Subject:   subject,
 		Issuer:    issuer,
 		Email:     "test@example.com",
@@ -96,12 +100,12 @@ func AssertError(t *testing.T, err error, wantErr bool, expectedCode string) {
 	}
 
 	if wantErr && expectedCode != "" {
-		if !authkit.IsAuthError(err) {
+		if !contracts.IsAuthError(err) {
 			t.Errorf("expected AuthError, got %T", err)
 			return
 		}
 
-		actualCode := authkit.GetErrorCode(err)
+		actualCode := contracts.GetErrorCode(err)
 		if actualCode != expectedCode {
 			t.Errorf("expected error code %s, got %s", expectedCode, actualCode)
 		}
@@ -146,4 +150,77 @@ func AssertFalse(t *testing.T, condition bool, message string) {
 	if condition {
 		t.Error(message)
 	}
+}
+
+// AssertValidToken validates that a token is valid and contains expected claims
+func AssertValidToken(t *testing.T, auth *authkit.AuthKit, token string, expectedUserID string) *contracts.Claims {
+	t.Helper()
+
+	claims, err := auth.ValidateToken(context.Background(), token)
+	require.NoError(t, err, "Token validation should not fail")
+	require.NotNil(t, claims, "Claims should not be nil")
+
+	if expectedUserID != "" {
+		assert.Equal(t, expectedUserID, claims.Subject, "User ID should match")
+	}
+
+	return claims
+}
+
+// AssertTokenGeneration generates a token and validates its basic properties
+func AssertTokenGeneration(t *testing.T, auth *authkit.AuthKit, user *contracts.User) string {
+	t.Helper()
+
+	// Convert user to claims
+	claims := &contracts.Claims{
+		Subject:   user.ID,
+		Email:     user.Email,
+		Username:  user.Username,
+		Name:      user.Name,
+		Roles:     user.Roles,
+		Issuer:    "test",
+		IssuedAt:  time.Now(),
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	token, err := auth.GenerateToken(context.Background(), claims)
+	require.NoError(t, err, "Token generation should not fail")
+	require.NotEmpty(t, token, "Token should not be empty")
+
+	// Validate the generated token
+	validatedClaims := AssertValidToken(t, auth, token, user.ID)
+	assert.Equal(t, user.ID, validatedClaims.Subject)
+
+	return token
+}
+
+// AssertInvalidToken validates that a token is invalid
+func AssertInvalidToken(t *testing.T, auth *authkit.AuthKit, token string, expectedErrorCode string) {
+	t.Helper()
+
+	claims, err := auth.ValidateToken(context.Background(), token)
+	assert.Error(t, err, "Token validation should fail")
+	assert.Nil(t, claims, "Claims should be nil for invalid token")
+
+	if expectedErrorCode != "" {
+		assert.Equal(t, expectedErrorCode, contracts.GetErrorCode(err))
+	}
+}
+
+// AssertJWTClaims validates specific JWT claims
+func AssertJWTClaims(t *testing.T, claims *contracts.Claims, expectedIssuer string, expectedAudience []string) {
+	t.Helper()
+
+	require.NotNil(t, claims, "Claims should not be nil")
+
+	if expectedIssuer != "" {
+		assert.Equal(t, expectedIssuer, claims.Issuer)
+	}
+
+	if len(expectedAudience) > 0 {
+		assert.Equal(t, expectedAudience, claims.Audience)
+	}
+
+	assert.True(t, claims.ExpiresAt.After(time.Now()), "Token should not be expired")
+	assert.True(t, claims.IssuedAt.Before(time.Now().Add(time.Second)), "IssuedAt should be in the past")
 }

@@ -22,8 +22,10 @@ coverage.html
 go-authkit
 go-authkit_*
 examples/*/main
-examples/*/basic
 examples/*/go-authkit_*
+
+examples/basic/basic
+examples/token-management/token-management
 
 # Temporary files
 *.tmp

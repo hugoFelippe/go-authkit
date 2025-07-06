@@ -84,7 +84,7 @@ func TestExampleStructure(t *testing.T) {
 	}
 
 	// Check if main.go exists
-	mainFile := filepath.Join(exampleDir, "basic_example.go")
+	mainFile := filepath.Join(exampleDir, "main.go")
 	if _, err := os.Stat(mainFile); os.IsNotExist(err) {
 		t.Fatalf("Basic example main file does not exist: %s", mainFile)
 	}

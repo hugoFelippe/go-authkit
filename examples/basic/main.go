@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hugoFelippe/go-authkit"
+	"github.com/hugoFelippe/go-authkit/contracts"
 )
 
 func main() {
@@ -33,7 +34,7 @@ func main() {
 	// 2. Criar estruturas de dados de exemplo
 	fmt.Println("\n👤 2. Criando usuário de exemplo...")
 
-	user := &authkit.User{
+	user := &contracts.User{
 		ID:          "usr_123456",
 		Username:    "alice",
 		Email:       "alice@example.com",
@@ -60,7 +61,7 @@ func main() {
 	fmt.Println("\n🎫 3. Criando claims para token...")
 
 	now := time.Now()
-	claims := &authkit.Claims{
+	claims := &contracts.Claims{
 		Subject:     user.ID,
 		Issuer:      config.Issuer,
 		Audience:    []string{"api.myapp.com", "admin.myapp.com"},
@@ -92,18 +93,19 @@ func main() {
 	// 4. Criar API Key de exemplo
 	fmt.Println("\n🔑 4. Criando API Key...")
 
-	apiKey := &authkit.APIKey{
+	apiKey := &contracts.APIKey{
 		ID:          "key_456789",
 		Key:         config.APIKeyPrefix + "1234567890abcdef1234567890abcdef",
 		Name:        "Alice's Personal API Key",
 		Description: "Para integração com sistema de CMS",
 		UserID:      user.ID,
 		Scopes:      []string{"read:posts", "write:posts", "read:media"},
-		Metadata: map[string]string{
+		Metadata: map[string]interface{}{
 			"environment": "production",
 			"client_app":  "cms_integration",
 		},
 		CreatedAt: now,
+		UpdatedAt: now,
 		ExpiresAt: &[]time.Time{now.Add(365 * 24 * time.Hour)}[0], // 1 ano
 		Active:    true,
 	}
@@ -117,20 +119,17 @@ func main() {
 	fmt.Println("\n❌ 5. Demonstrando sistema de erros...")
 
 	// Erro básico
-	err1 := authkit.ErrUnauthorized
+	err1 := contracts.ErrUnauthorized
 	fmt.Printf("   • Erro básico: %s\n", err1.Error())
 
 	// Erro com detalhes
-	err2 := authkit.ErrInsufficientScopeWithDetails(
-		[]string{"admin:users"},
-		[]string{"read:users"},
-	)
+	err2 := contracts.ErrInsufficientScope
 	fmt.Printf("   • Erro com detalhes: %s\n", err2.Error())
 
 	// Verificação de tipo
-	if authkit.IsAuthError(err2) {
-		fmt.Printf("   • Código: %s\n", authkit.GetErrorCode(err2))
-		fmt.Printf("   • É erro de autorização: %t\n", authkit.IsAuthorizationError(err2))
+	if contracts.IsAuthError(err2) {
+		fmt.Printf("   • Código: %s\n", contracts.GetErrorCode(err2))
+		fmt.Printf("   • É erro de autenticação: %t\n", contracts.IsAuthError(err2))
 	}
 
 	// 6. Testar validação de configuração
@@ -153,18 +152,19 @@ func main() {
 	// 7. Demonstrar sessão
 	fmt.Println("\n📱 7. Criando informações de sessão...")
 
-	session := &authkit.SessionInfo{
-		ID:         "sess_345678",
-		UserID:     user.ID,
-		Token:      "session_token_abcdef123456",
-		CreatedAt:  now,
-		ExpiresAt:  now.Add(7 * 24 * time.Hour), // 7 dias
-		LastAccess: now,
-		IPAddress:  "192.168.1.100",
-		UserAgent:  "Mozilla/5.0 (AuthKit Example)",
-		Metadata: map[string]string{
-			"device":   "desktop",
-			"location": "São Paulo, BR",
+	session := &contracts.Session{
+		ID:        "sess_345678",
+		UserID:    user.ID,
+		Token:     "session_token_abcdef123456",
+		CreatedAt: now,
+		UpdatedAt: now,
+		ExpiresAt: now.Add(7 * 24 * time.Hour), // 7 dias
+		Metadata: map[string]interface{}{
+			"last_access": now,
+			"ip_address":  "192.168.1.100",
+			"user_agent":  "Mozilla/5.0 (AuthKit Example)",
+			"device":      "desktop",
+			"location":    "São Paulo, BR",
 		},
 		Active: true,
 	}

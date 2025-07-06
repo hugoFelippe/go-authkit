@@ -3,6 +3,8 @@ package authkit
 import (
 	"crypto/rsa"
 	"time"
+
+	"github.com/hugoFelippe/go-authkit/contracts"
 )
 
 // Config contém todas as configurações do AuthKit.
@@ -70,6 +72,15 @@ type Config struct {
 
 // Option define uma função de configuração.
 type Option func(*Config)
+
+// ErrInvalidConfigWithDetails cria um erro de configuração com detalhes específicos.
+func ErrInvalidConfigWithDetails(field, message string) error {
+	return contracts.WrapError(
+		contracts.ErrCodeConfigurationError,
+		"configuration error for field '"+field+"': "+message,
+		nil,
+	)
+}
 
 // DefaultConfig retorna uma configuração padrão.
 func DefaultConfig() *Config {

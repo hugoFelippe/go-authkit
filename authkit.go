@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/hugoFelippe/go-authkit/contracts"
 )
 
 // AuthKit é a estrutura principal que gerencia autenticação e autorização.
@@ -11,22 +13,14 @@ type AuthKit struct {
 	config *Config
 
 	// Core components
-	tokenManager      TokenManager
-	userProvider      UserProvider
-	permissionChecker PermissionChecker
-	roleManager       RoleManager
-	scopeChecker      ScopeChecker
-	sessionManager    SessionManager
-	apiKeyManager     APIKeyManager
-
-	// Storage
-	tokenStorage   TokenStorage
-	userStorage    UserStorage
-	sessionStorage SessionStorage
+	tokenManager      contracts.TokenManager
+	userProvider      contracts.UserProvider
+	permissionChecker contracts.PermissionProvider
+	storageProvider   contracts.StorageProvider
 
 	// External providers
-	oauth2Provider OAuth2Provider
-	oidcProvider   OIDCProvider
+	oauth2Provider contracts.OAuth2Provider
+	jwtProvider    contracts.JWTProvider
 
 	// Internal state
 	initialized bool
@@ -74,7 +68,7 @@ func (a *AuthKit) Config() *Config {
 // Token Management Methods
 
 // TokenValidator retorna o validador de tokens.
-func (a *AuthKit) TokenValidator() TokenValidator {
+func (a *AuthKit) TokenValidator() contracts.TokenValidator {
 	if a.tokenManager != nil {
 		return a.tokenManager
 	}
@@ -83,7 +77,7 @@ func (a *AuthKit) TokenValidator() TokenValidator {
 }
 
 // TokenGenerator retorna o gerador de tokens.
-func (a *AuthKit) TokenGenerator() TokenGenerator {
+func (a *AuthKit) TokenGenerator() contracts.TokenGenerator {
 	if a.tokenManager != nil {
 		return a.tokenManager
 	}
@@ -92,10 +86,10 @@ func (a *AuthKit) TokenGenerator() TokenGenerator {
 }
 
 // GenerateToken gera um novo token com as claims fornecidas.
-func (a *AuthKit) GenerateToken(ctx context.Context, claims *Claims) (string, error) {
+func (a *AuthKit) GenerateToken(ctx context.Context, claims *contracts.Claims) (string, error) {
 	generator := a.TokenGenerator()
 	if generator == nil {
-		return "", ErrInvalidConfig
+		return "", contracts.ErrConfigurationError
 	}
 	return generator.GenerateToken(ctx, claims)
 }
@@ -107,7 +101,7 @@ func (a *AuthKit) GenerateTokenForUser(ctx context.Context, userID string) (stri
 		return "", err
 	}
 
-	claims := &Claims{
+	claims := &contracts.Claims{
 		Subject:     user.ID,
 		Issuer:      a.config.Issuer,
 		IssuedAt:    time.Now(),
@@ -127,10 +121,10 @@ func (a *AuthKit) GenerateTokenForUser(ctx context.Context, userID string) (stri
 }
 
 // ValidateToken valida um token e retorna as claims.
-func (a *AuthKit) ValidateToken(ctx context.Context, token string) (*Claims, error) {
+func (a *AuthKit) ValidateToken(ctx context.Context, token string) (*contracts.Claims, error) {
 	validator := a.TokenValidator()
 	if validator == nil {
-		return nil, ErrInvalidConfig
+		return nil, contracts.ErrConfigurationError
 	}
 	return validator.ValidateToken(ctx, token)
 }
@@ -138,15 +132,18 @@ func (a *AuthKit) ValidateToken(ctx context.Context, token string) (*Claims, err
 // RefreshToken renova um token usando um refresh token.
 func (a *AuthKit) RefreshToken(ctx context.Context, refreshToken string) (string, error) {
 	if a.tokenManager == nil {
-		return "", ErrInvalidConfig
+		return "", contracts.ErrConfigurationError
 	}
-	return a.tokenManager.RefreshToken(ctx, refreshToken)
+
+	// TokenManager retorna (accessToken, newRefreshToken, error)
+	accessToken, _, err := a.tokenManager.RefreshToken(ctx, refreshToken)
+	return accessToken, err
 }
 
 // RevokeToken revoga um token.
 func (a *AuthKit) RevokeToken(ctx context.Context, token string) error {
 	if a.tokenManager == nil {
-		return ErrInvalidConfig
+		return contracts.ErrConfigurationError
 	}
 	return a.tokenManager.RevokeToken(ctx, token)
 }
@@ -154,41 +151,41 @@ func (a *AuthKit) RevokeToken(ctx context.Context, token string) error {
 // User Management Methods
 
 // GetUser busca um usuário por ID.
-func (a *AuthKit) GetUser(ctx context.Context, userID string) (*User, error) {
+func (a *AuthKit) GetUser(ctx context.Context, userID string) (*contracts.User, error) {
 	if a.userProvider == nil {
-		return nil, ErrInvalidConfig
+		return nil, contracts.ErrConfigurationError
 	}
 	return a.userProvider.GetUser(ctx, userID)
 }
 
 // GetUserByUsername busca um usuário por username.
-func (a *AuthKit) GetUserByUsername(ctx context.Context, username string) (*User, error) {
+func (a *AuthKit) GetUserByUsername(ctx context.Context, username string) (*contracts.User, error) {
 	if a.userProvider == nil {
-		return nil, ErrInvalidConfig
+		return nil, contracts.ErrConfigurationError
 	}
 	return a.userProvider.GetUserByUsername(ctx, username)
 }
 
 // GetUserByEmail busca um usuário por email.
-func (a *AuthKit) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+func (a *AuthKit) GetUserByEmail(ctx context.Context, email string) (*contracts.User, error) {
 	if a.userProvider == nil {
-		return nil, ErrInvalidConfig
+		return nil, contracts.ErrConfigurationError
 	}
 	return a.userProvider.GetUserByEmail(ctx, email)
 }
 
 // ValidateCredentials valida credenciais de usuário.
-func (a *AuthKit) ValidateCredentials(ctx context.Context, username, password string) (*User, error) {
+func (a *AuthKit) ValidateCredentials(ctx context.Context, username, password string) (*contracts.User, error) {
 	if a.userProvider == nil {
-		return nil, ErrInvalidConfig
+		return nil, contracts.ErrConfigurationError
 	}
 	return a.userProvider.ValidateCredentials(ctx, username, password)
 }
 
 // CreateUser cria um novo usuário.
-func (a *AuthKit) CreateUser(ctx context.Context, user *User) error {
+func (a *AuthKit) CreateUser(ctx context.Context, user *contracts.User) error {
 	if a.userProvider == nil {
-		return ErrInvalidConfig
+		return contracts.ErrConfigurationError
 	}
 	return a.userProvider.CreateUser(ctx, user)
 }
@@ -196,151 +193,64 @@ func (a *AuthKit) CreateUser(ctx context.Context, user *User) error {
 // Permission Management Methods
 
 // HasPermission verifica se um usuário tem uma permissão específica.
-func (a *AuthKit) HasPermission(ctx context.Context, userID string, permission string) (bool, error) {
+func (a *AuthKit) HasPermission(ctx context.Context, userID, resource, action string) (bool, error) {
 	if a.permissionChecker == nil {
-		return false, ErrInvalidConfig
+		return false, contracts.ErrConfigurationError
 	}
-	return a.permissionChecker.HasPermission(ctx, userID, permission)
+	return a.permissionChecker.HasPermission(ctx, userID, resource, action)
 }
 
 // HasRole verifica se um usuário tem um papel específico.
-func (a *AuthKit) HasRole(ctx context.Context, userID string, role string) (bool, error) {
-	if a.roleManager == nil {
-		return false, ErrInvalidConfig
+func (a *AuthKit) HasRole(ctx context.Context, userID, roleName string) (bool, error) {
+	if a.permissionChecker == nil {
+		return false, contracts.ErrConfigurationError
 	}
-	return a.roleManager.HasRole(ctx, userID, role)
+	return a.permissionChecker.HasRole(ctx, userID, roleName)
 }
 
 // HasScope verifica se um token tem um escopo específico.
 func (a *AuthKit) HasScope(ctx context.Context, scopes []string, required string) bool {
-	if a.scopeChecker == nil {
-		return false
+	// Implementação simplificada de verificação de escopo
+	for _, scope := range scopes {
+		if scope == required {
+			return true
+		}
 	}
-	return a.scopeChecker.HasScope(ctx, scopes, required)
+	return false
 }
 
-// API Key Management Methods
+// Storage Methods
 
-// GenerateAPIKey gera uma nova API Key.
-func (a *AuthKit) GenerateAPIKey(ctx context.Context, userID, name string, scopes []string) (*APIKey, error) {
-	if a.apiKeyManager == nil {
-		return nil, ErrInvalidConfig
-	}
-	return a.apiKeyManager.GenerateAPIKey(ctx, userID, name, scopes)
-}
-
-// ValidateAPIKey valida uma API Key e retorna as claims.
-func (a *AuthKit) ValidateAPIKey(ctx context.Context, key string) (*Claims, error) {
-	if a.apiKeyManager == nil {
-		return nil, ErrInvalidConfig
-	}
-	return a.apiKeyManager.ValidateAPIKey(ctx, key)
-}
-
-// Session Management Methods
-
-// CreateSession cria uma nova sessão.
-func (a *AuthKit) CreateSession(ctx context.Context, userID string, metadata map[string]string) (*SessionInfo, error) {
-	if a.sessionManager == nil {
-		return nil, ErrInvalidConfig
-	}
-	return a.sessionManager.CreateSession(ctx, userID, metadata)
-}
-
-// GetSession busca uma sessão por ID.
-func (a *AuthKit) GetSession(ctx context.Context, sessionID string) (*SessionInfo, error) {
-	if a.sessionManager == nil {
-		return nil, ErrInvalidConfig
-	}
-	return a.sessionManager.GetSession(ctx, sessionID)
-}
-
-// OAuth2/OIDC Methods
-
-// GetLoginURL retorna a URL de login OAuth2/OIDC.
-func (a *AuthKit) GetLoginURL(state string, scopes ...string) string {
-	if a.oauth2Provider != nil {
-		return a.oauth2Provider.GetAuthorizationURL(state, scopes)
-	}
-	if a.oidcProvider != nil {
-		return a.oidcProvider.GetAuthorizationURL(state, scopes)
-	}
-	return ""
-}
-
-// HandleCallback processa o callback OAuth2/OIDC.
-func (a *AuthKit) HandleCallback(ctx context.Context, code, state string) (*OAuth2Token, error) {
-	if a.oauth2Provider != nil {
-		return a.oauth2Provider.ExchangeCode(ctx, code, state)
-	}
-	if a.oidcProvider != nil {
-		return a.oidcProvider.ExchangeCode(ctx, code, state)
-	}
-	return nil, ErrInvalidConfig
+// UseStorageProvider define um provedor de armazenamento personalizado.
+func (a *AuthKit) UseStorageProvider(provider contracts.StorageProvider) {
+	a.storageProvider = provider
 }
 
 // Component Injection Methods
 
 // UseTokenManager define um gerenciador de tokens personalizado.
-func (a *AuthKit) UseTokenManager(manager TokenManager) {
+func (a *AuthKit) UseTokenManager(manager contracts.TokenManager) {
 	a.tokenManager = manager
 }
 
 // UseUserProvider define um provedor de usuários personalizado.
-func (a *AuthKit) UseUserProvider(provider UserProvider) {
+func (a *AuthKit) UseUserProvider(provider contracts.UserProvider) {
 	a.userProvider = provider
 }
 
-// UsePermissionChecker define um verificador de permissões personalizado.
-func (a *AuthKit) UsePermissionChecker(checker PermissionChecker) {
-	a.permissionChecker = checker
-}
-
-// UseRoleManager define um gerenciador de papéis personalizado.
-func (a *AuthKit) UseRoleManager(manager RoleManager) {
-	a.roleManager = manager
-}
-
-// UseScopeChecker define um verificador de escopos personalizado.
-func (a *AuthKit) UseScopeChecker(checker ScopeChecker) {
-	a.scopeChecker = checker
-}
-
-// UseSessionManager define um gerenciador de sessões personalizado.
-func (a *AuthKit) UseSessionManager(manager SessionManager) {
-	a.sessionManager = manager
-}
-
-// UseAPIKeyManager define um gerenciador de API keys personalizado.
-func (a *AuthKit) UseAPIKeyManager(manager APIKeyManager) {
-	a.apiKeyManager = manager
+// UsePermissionProvider define um provedor de permissões personalizado.
+func (a *AuthKit) UsePermissionProvider(provider contracts.PermissionProvider) {
+	a.permissionChecker = provider
 }
 
 // UseOAuth2Provider define um provedor OAuth2 personalizado.
-func (a *AuthKit) UseOAuth2Provider(provider OAuth2Provider) {
+func (a *AuthKit) UseOAuth2Provider(provider contracts.OAuth2Provider) {
 	a.oauth2Provider = provider
 }
 
-// UseOIDCProvider define um provedor OIDC personalizado.
-func (a *AuthKit) UseOIDCProvider(provider OIDCProvider) {
-	a.oidcProvider = provider
-}
-
-// Storage Methods
-
-// UseTokenStorage define um armazenamento de tokens personalizado.
-func (a *AuthKit) UseTokenStorage(storage TokenStorage) {
-	a.tokenStorage = storage
-}
-
-// UseUserStorage define um armazenamento de usuários personalizado.
-func (a *AuthKit) UseUserStorage(storage UserStorage) {
-	a.userStorage = storage
-}
-
-// UseSessionStorage define um armazenamento de sessões personalizado.
-func (a *AuthKit) UseSessionStorage(storage SessionStorage) {
-	a.sessionStorage = storage
+// UseJWTProvider define um provedor JWT personalizado.
+func (a *AuthKit) UseJWTProvider(provider contracts.JWTProvider) {
+	a.jwtProvider = provider
 }
 
 // Utility Methods
@@ -352,30 +262,9 @@ func (a *AuthKit) IsInitialized() bool {
 
 // Close fecha todos os recursos e conexões.
 func (a *AuthKit) Close() error {
-	var errors []error
-
-	if a.tokenStorage != nil {
-		if err := a.tokenStorage.Close(); err != nil {
-			errors = append(errors, err)
-		}
+	if a.storageProvider != nil {
+		return a.storageProvider.Close()
 	}
-
-	if a.userStorage != nil {
-		if err := a.userStorage.Close(); err != nil {
-			errors = append(errors, err)
-		}
-	}
-
-	if a.sessionStorage != nil {
-		if err := a.sessionStorage.Close(); err != nil {
-			errors = append(errors, err)
-		}
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("errors closing authkit: %v", errors)
-	}
-
 	return nil
 }
 

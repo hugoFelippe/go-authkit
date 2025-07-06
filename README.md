@@ -31,6 +31,28 @@ Este pacote foi criado para facilitar a integração de autenticação e autoriz
 * **Interoperável**: Integra-se com bibliotecas populares do ecossistema Go
 * **Não opinativo**: Não impõe um sistema de armazenamento ou framework web específico
 * **Interfaces claras**: Permite implementar seus próprios adaptadores de armazenamento
+* **Sem importações cíclicas**: Arquitetura com pacote `contracts/` evita problemas de dependência circular
+
+## 🏗️ Arquitetura de Contracts
+
+O projeto utiliza uma arquitetura especial com o pacote `contracts/` para resolver problemas de importação cíclica comuns em projetos Go:
+
+### 📋 Pacote Contracts (`contracts/`)
+- **Centraliza** todas as interfaces, tipos e erros compartilhados
+- **Elimina** importações cíclicas entre pacotes
+- **Facilita** a implementação de adaptadores personalizados
+- **Padroniza** tipos de dados em todo o ecossistema
+
+### 🔄 Fluxo de Dependências
+```
+adapter/ ──┐
+           ├─→ contracts/ ←── authkit.go
+token/   ──┤
+           ├─→ contracts/ ←── middleware/
+storage/ ──┘
+```
+
+**Regra fundamental**: Todos os pacotes podem importar `contracts/`, mas `contracts/` não importa nenhum pacote interno.
 
 ## 💡 Filosofia do projeto
 
@@ -46,9 +68,13 @@ Este pacote foi criado para facilitar a integração de autenticação e autoriz
 /authkit/
 ├── authkit.go               # Ponto de entrada principal para a biblioteca
 ├── config.go                # Configurações unificadas
-├── errors.go                # Definições de erros específicos
-├── interfaces.go            # Interfaces comuns e extensíveis
-├── types.go                 # Tipos e estruturas de dados compartilhados
+│
+├── contracts/               # Interfaces, tipos e erros compartilhados (evita importação cíclica)
+│   ├── interfaces.go        # Todas as interfaces do sistema
+│   ├── types.go             # Tipos de dados compartilhados
+│   ├── errors.go            # Erros específicos com códigos identificadores
+│   ├── README.md            # Documentação do pacote contracts
+│   └── MIGRATION.md         # Guia de migração para contracts
 │
 ├── adapter/                 # Adaptadores para bibliotecas externas
 │   ├── oauth2.go            # Adaptador para bibliotecas OAuth2
@@ -83,7 +109,10 @@ Este pacote foi criado para facilitar a integração de autenticação e autoriz
 ### Configuração básica
 
 ```go
-import "github.com/hugoFelippe/go-authkit"
+import (
+    "github.com/hugoFelippe/go-authkit"
+    "github.com/hugoFelippe/go-authkit/contracts"
+)
 
 // Criar configuração com valores padrão
 config := authkit.DefaultConfig()
@@ -102,6 +131,11 @@ auth.UseStorage(myCustomStorage)
 ### Validação de token em um middleware
 
 ```go
+import (
+    "github.com/hugoFelippe/go-authkit"
+    "github.com/hugoFelippe/go-authkit/contracts"
+)
+
 // Framework-agnóstico
 validator := auth.TokenValidator()
 
@@ -115,7 +149,8 @@ http.HandleFunc("/protected", func(w http.ResponseWriter, r *http.Request) {
         return
     }
     
-    // Access granted
+    // Access granted - usar claims do tipo contracts.Claims
+    userID := claims.Subject
     // ...
 })
 
@@ -142,12 +177,17 @@ app.Use(authkit.FiberMiddleware(auth))
 ### Validação de escopos e permissões
 
 ```go
+import (
+    "github.com/hugoFelippe/go-authkit"
+    "github.com/hugoFelippe/go-authkit/contracts"
+)
+
 // RBAC - Verificação de papéis
 rbacChecker := authkit.RBACMiddleware(auth, []string{"admin", "editor"})
 protectedHandler := rbacChecker.Wrap(myHandler)
 
 // ABAC - Verificação baseada em atributos
-abacPolicy := authkit.NewPolicy(func(claims *authkit.Claims) bool {
+abacPolicy := authkit.NewPolicy(func(claims *contracts.Claims) bool {
     return claims.Department == "IT" && claims.Level >= 3
 })
 protectedHandler := authkit.ABACMiddleware(auth, abacPolicy).Wrap(myHandler)
@@ -160,6 +200,11 @@ protectedHandler := scopeChecker.Wrap(myHandler)
 ### Integração com API Keys
 
 ```go
+import (
+    "github.com/hugoFelippe/go-authkit"
+    "github.com/hugoFelippe/go-authkit/contracts"
+)
+
 // Configurar validador de API Keys
 apiConfig := authkit.WithAPIKeyConfig(
     authkit.WithAPIKeyPrefix("api-"),
@@ -170,12 +215,23 @@ auth := authkit.New(apiConfig)
 
 // Validar API Key
 key := "api-1234567890"
-claims, err := auth.ValidateAPIKey(r.Context(), key)
+apiKey, err := auth.ValidateAPIKey(r.Context(), key)
+if err != nil {
+    // Tratar erro usando contracts.AuthError
+    if contracts.GetErrorCode(err) == contracts.ErrCodeInvalidAPIKey {
+        // API Key inválida
+    }
+}
 ```
 
 ### Integração com SSO 
 
 ```go
+import (
+    "github.com/hugoFelippe/go-authkit"
+    "github.com/hugoFelippe/go-authkit/contracts"
+)
+
 // Configurar provedor SSO
 ssoConfig := authkit.WithSSOProvider(
     authkit.WithOIDCProvider("https://accounts.google.com"),
@@ -189,6 +245,113 @@ loginURL := auth.GetLoginURL(state)
 
 // Processar callback
 tokens, err := auth.HandleCallback(r.Context(), r.URL.Query())
+if err != nil {
+    // Usar sistema de erros do contracts
+    if contracts.IsAuthError(err) {
+        code := contracts.GetErrorCode(err)
+        // Tratar erro específico...
+    }
+}
 ```
+
+### Implementação de Adaptador Personalizado
+
+```go
+package myadapter
+
+import (
+    "context"
+    "github.com/hugoFelippe/go-authkit/contracts"
+)
+
+// Implementar interface TokenValidator do contracts
+type CustomTokenValidator struct {
+    secret []byte
+}
+
+func NewCustomValidator(secret []byte) contracts.TokenValidator {
+    return &CustomTokenValidator{secret: secret}
+}
+
+func (v *CustomTokenValidator) ValidateToken(ctx context.Context, token string) (*contracts.Claims, error) {
+    // Sua lógica de validação personalizada
+    if token == "" {
+        return nil, contracts.ErrInvalidToken
+    }
+    
+    // Retornar claims padronizadas
+    return &contracts.Claims{
+        Subject: "user123",
+        Email:   "user@example.com",
+        Roles:   []string{"user"},
+    }, nil
+}
+
+func (v *CustomTokenValidator) ValidateTokenWithType(ctx context.Context, token string, tokenType contracts.TokenType) (*contracts.Claims, error) {
+    // Implementação específica por tipo
+    switch tokenType {
+    case contracts.TokenTypeJWT:
+        return v.validateJWT(token)
+    case contracts.TokenTypeAPIKey:
+        return v.validateAPIKey(token)
+    default:
+        return nil, contracts.ErrInvalidToken
+    }
+}
+
+// Uso do adaptador personalizado
+func main() {
+    customValidator := NewCustomValidator([]byte("my-secret"))
+    
+    auth := authkit.New(
+        authkit.WithTokenValidator(customValidator),
+        authkit.WithIssuer("my-app"),
+    )
+    
+    // Usar normalmente...
+}
+```
+
+### Tratamento de Erros com Codes
+
+```go
+import "github.com/hugoFelippe/go-authkit/contracts"
+
+func handleAuthError(err error) {
+    if contracts.IsAuthError(err) {
+        switch contracts.GetErrorCode(err) {
+        case contracts.ErrCodeInvalidToken:
+            log.Println("Token inválido")
+        case contracts.ErrCodeExpiredToken:
+            log.Println("Token expirado")
+        case contracts.ErrCodeUserNotFound:
+            log.Println("Usuário não encontrado")
+        case contracts.ErrCodePermissionDenied:
+            log.Println("Permissão negada")
+        default:
+            log.Printf("Erro de autenticação: %s", err.Error())
+        }
+    }
+}
+```
+
+## 🔄 Migração e Compatibilidade
+
+### Para Usuários Existentes
+Se você já estava usando uma versão anterior do AuthKit, consulte o [guia de migração](./contracts/MIGRATION.md) para atualizar seu código para usar o novo pacote `contracts/`.
+
+### Benefícios da Nova Arquitetura
+- ✅ **Elimina importações cíclicas** entre pacotes
+- ✅ **API mais limpa** com interfaces centralizadas
+- ✅ **Melhor extensibilidade** para implementações personalizadas
+- ✅ **Compatibilidade** mantida através de interfaces estáveis
+- ✅ **Testabilidade** aprimorada com mocks mais fáceis
+
+### Estrutura de Pacotes
+- `contracts/` - Interfaces, tipos e erros (público e extensível)
+- `adapter/` - Implementações para bibliotecas externas
+- `middleware/` - Middlewares agnósticos de framework
+- `token/` - Manipuladores de token específicos
+- `storage/` - Adaptadores de armazenamento
 
 Mais exemplos em [./examples](./examples)

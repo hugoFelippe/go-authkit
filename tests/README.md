@@ -20,7 +20,7 @@ go-authkit/
 │       └── setup.go
 └── examples/
     └── basic/
-        └── basic_example.go
+        └── main.go
 ```
 
 ## Comandos de Desenvolvimento
