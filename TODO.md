@@ -49,113 +49,155 @@ Criar uma camada de abstração unificada sobre bibliotecas populares de autenti
 ### 🚀 **Fase 2: Token Management (Prioridade Alta)**
 
 #### 2.1 JWT Support
-- [ ] **token/jwt.go** - Adaptador para golang-jwt/jwt
-  - [ ] JWTManager struct
-  - [ ] Suporte a diferentes signing methods (HS256, RS256, ES256)
-  - [ ] GenerateToken com claims customizáveis
-  - [ ] ValidateToken com verificação de exp, iat, iss
-  - [ ] Refresh token support
+- [x] **token/jwt.go** - Adaptador para golang-jwt/jwt
+  - [x] JWTManager struct
+  - [x] Suporte a diferentes signing methods (HS256, RS256, ES256)
+  - [x] GenerateToken com claims customizáveis
+  - [x] ValidateToken com verificação de exp, iat, iss
+  - [x] Refresh token support
 
-- [ ] **token/validator.go** - Interface unificada de validação
-  - [ ] Validator interface
-  - [ ] Implementação base
-  - [ ] Chain of validators
-  - [ ] Context-aware validation
+- [x] **token/validator.go** - Interface unificada de validação
+  - [x] Validator interface
+  - [x] Implementação base
+  - [x] Chain of validators
+  - [x] Context-aware validation
 
-- [ ] **token/manager.go** - Gerenciamento unificado
-  - [ ] TokenManager interface
-  - [ ] Implementação que combina diferentes tipos
-  - [ ] Token introspection
-  - [ ] Token revocation
+- [x] **token/manager.go** - Gerenciamento unificado
+  - [x] TokenManager interface
+  - [x] Implementação que combina diferentes tipos
+  - [x] Token introspection
+  - [x] Token revocation
 
 #### 2.2 API Keys Support
-- [ ] **token/apikey.go** - Gerenciamento de API Keys
-  - [ ] APIKeyManager struct
-  - [ ] Geração de chaves com prefixos
-  - [ ] Validação e lookup
-  - [ ] Suporte a diferentes formatos (header, query, body)
+- [x] **token/apikey.go** - Gerenciamento de API Keys
+  - [x] APIKeyManager struct
+  - [x] Geração de chaves com prefixos
+  - [x] Validação e lookup
+  - [x] Suporte a diferentes formatos (header, query, body)
 
 ### 🔐 **Fase 3: Storage Abstraction (Prioridade Media)**
 
-#### 3.1 Storage Interfaces
-- [ ] **storage/interfaces.go** - Definições de interfaces
-  - [ ] TokenStorage interface
-  - [ ] UserStorage interface
-  - [ ] SessionStorage interface
-  - [ ] ConfigStorage interface
+> ⚠️ **ATENÇÃO**: Seguindo as regras do projeto, TODAS as interfaces devem estar em `contracts/interfaces.go`. 
+> O pacote `storage/` conterá APENAS implementações concretas dessas interfaces.
 
-- [ ] **storage/memory.go** - Implementação em memória
-  - [ ] MemoryStorage struct
-  - [ ] Thread-safe operations
-  - [ ] TTL support para tokens
-  - [ ] Cleanup de tokens expirados
+#### 3.1 Storage Interfaces (em contracts/)
+- [x] **contracts/interfaces.go** - Adicionar interfaces de storage específicas
+  - [x] TokenStorage interface (para storage específico de tokens)
+  - [x] UserStorage interface (para storage específico de usuários) 
+  - [x] SessionStorage interface (para storage específico de sessões)
+  - [x] ConfigStorage interface (para storage de configurações)
+  - [x] CacheStorage interface (para cache genérico com TTL)
+  - [x] HealthChecker interface (para verificação de saúde)
+  - [x] StorageManager interface (combina todos os tipos)
+
+#### 3.2 Storage Implementation
+- [x] **storage/memory.go** - Implementação em memória das interfaces
+  - [x] MemoryStorage struct (implementa StorageManager)
+  - [x] Thread-safe operations com sync.RWMutex
+  - [x] TTL support para tokens com cleanup automático
+  - [x] Implementação de todas as interfaces de contracts/
+  - [x] Cleanup worker automático a cada 5 minutos
+  - [x] Testes unitários completos
 
 ### 🛡️ **Fase 4: Middleware Layer (Prioridade Media)**
 
-#### 4.1 Core Middleware
-- [ ] **middleware/auth.go** - Middleware básico framework-agnóstico
-  - [ ] AuthMiddleware struct
+> ⚠️ **ATENÇÃO**: Seguindo as regras do projeto, TODAS as interfaces devem estar em `contracts/interfaces.go`. 
+> O pacote `middleware/` conterá APENAS implementações concretas dessas interfaces.
+
+#### 4.1 Core Middleware (interfaces em contracts/)
+- [ ] **contracts/interfaces.go** - Adicionar interfaces de middleware
+  - [ ] HTTPMiddleware interface (middleware framework-agnóstico)
+  - [ ] TokenExtractor interface (extração de tokens)
+  - [ ] ScopeValidator interface (validação de escopos)
+- [ ] **middleware/auth.go** - Middleware básico (implementações)
+  - [ ] AuthMiddleware struct (implementa HTTPMiddleware)
   - [ ] HTTP Handler wrapper
   - [ ] Token extraction (Bearer, header, query, cookie)
   - [ ] Context injection de claims
 
-- [ ] **middleware/scope.go** - Verificação de escopos
-  - [ ] ScopeMiddleware
+- [ ] **middleware/scope.go** - Verificação de escopos (implementações)
+  - [ ] ScopeMiddleware struct (implementa ScopeValidator)
   - [ ] RequiredScopes validation
   - [ ] OAuth2 scope format support
 
-#### 4.2 Framework Wrappers
+#### 4.2 Framework Wrappers (implementações apenas)
 - [ ] **middleware/wrapper.go** - Adaptadores para frameworks
-  - [ ] GinMiddleware para Gin
-  - [ ] EchoMiddleware para Echo
-  - [ ] FiberMiddleware para Fiber
-  - [ ] ChiMiddleware para Chi
-  - [ ] Generic HTTP middleware
+  - [ ] GinMiddleware para Gin (usa interfaces de contracts/)
+  - [ ] EchoMiddleware para Echo (usa interfaces de contracts/)
+  - [ ] FiberMiddleware para Fiber (usa interfaces de contracts/)
+  - [ ] ChiMiddleware para Chi (usa interfaces de contracts/)
+  - [ ] Generic HTTP middleware (usa interfaces de contracts/)
 
 ### 🔌 **Fase 5: External Adapters (Prioridade Media)**
 
-#### 5.1 OAuth2 Integration
-- [ ] **adapter/oauth2.go** - Adaptador para golang.org/x/oauth2
-  - [ ] OAuth2Adapter struct
+> ⚠️ **ATENÇÃO**: Seguindo as regras do projeto, TODAS as interfaces devem estar em `contracts/interfaces.go`. 
+> O pacote `adapter/` conterá APENAS implementações concretas dessas interfaces.
+
+#### 5.1 OAuth2 Integration (interfaces em contracts/)
+- [ ] **contracts/interfaces.go** - Adicionar interfaces OAuth2
+  - [ ] OAuth2Client interface
+  - [ ] TokenExchanger interface
+  - [ ] AuthorizationProvider interface
+- [ ] **adapter/oauth2.go** - Adaptador para golang.org/x/oauth2 (implementações)
+  - [ ] OAuth2Adapter struct (implementa interfaces OAuth2)
   - [ ] Authorization URL generation
   - [ ] Token exchange
   - [ ] Token refresh
   - [ ] Multi-provider support
 
-#### 5.2 OIDC Integration
-- [ ] **adapter/oidc.go** - Adaptador para coreos/go-oidc
-  - [ ] OIDCAdapter struct
+#### 5.2 OIDC Integration (interfaces em contracts/)
+- [ ] **contracts/interfaces.go** - Adicionar interfaces OIDC
+  - [ ] OIDCProvider interface
+  - [ ] DiscoveryHandler interface
+  - [ ] JWKSValidator interface
+- [ ] **adapter/oidc.go** - Adaptador para coreos/go-oidc (implementações)
+  - [ ] OIDCAdapter struct (implementa interfaces OIDC)
   - [ ] Discovery document handling
   - [ ] ID Token validation
   - [ ] UserInfo endpoint integration
   - [ ] JWKS handling
 
-#### 5.3 SSO Providers
-- [ ] **adapter/sso.go** - Adaptadores para provedores SSO
-  - [ ] Google OAuth2/OIDC
-  - [ ] Microsoft Azure AD
-  - [ ] GitHub OAuth2
+#### 5.3 SSO Providers (interfaces em contracts/)
+- [ ] **contracts/interfaces.go** - Adicionar interfaces SSO
+  - [ ] SSOProvider interface
+  - [ ] ProviderRegistry interface
+- [ ] **adapter/sso.go** - Adaptadores para provedores SSO (implementações)
+  - [ ] Implementações para Google OAuth2/OIDC
+  - [ ] Implementações para Microsoft Azure AD
+  - [ ] Implementações para GitHub OAuth2
   - [ ] Generic OIDC provider
   - [ ] SAML adapter (future)
 
 ### 🔒 **Fase 6: Permissions & Authorization (Prioridade Baixa)**
 
-#### 6.1 RBAC Support
-- [ ] **permissions/rbac.go** - Role-Based Access Control
-  - [ ] Role/Permission definitions
+#### 6.1 RBAC Support (interfaces em contracts/)
+- [ ] **contracts/interfaces.go** - Adicionar interfaces RBAC
+  - [ ] RoleManager interface
+  - [ ] PermissionManager interface  
   - [ ] RBACChecker interface
+- [ ] **permissions/rbac.go** - Role-Based Access Control (implementações)
+  - [ ] Role/Permission definitions
+  - [ ] Implementação das interfaces RBAC
   - [ ] Role hierarchy support
   - [ ] Role assignment/validation
 
-#### 6.2 ABAC Support
-- [ ] **permissions/abac.go** - Attribute-Based Access Control
-  - [ ] Policy engine interface
+#### 6.2 ABAC Support (interfaces em contracts/)
+- [ ] **contracts/interfaces.go** - Adicionar interfaces ABAC
+  - [ ] PolicyEngine interface
+  - [ ] AttributeProvider interface
+  - [ ] ABACChecker interface
+- [ ] **permissions/abac.go** - Attribute-Based Access Control (implementações)
+  - [ ] Implementação das interfaces ABAC
   - [ ] Attribute evaluation
   - [ ] Rule-based permissions
   - [ ] Context-aware decisions
 
-#### 6.3 Scope Utilities
-- [ ] **permissions/scope.go** - Utilitários para escopos
+#### 6.3 Scope Utilities (interfaces em contracts/)
+- [ ] **contracts/interfaces.go** - Adicionar interfaces de Scope
+  - [ ] ScopeValidator interface
+  - [ ] ScopeHierarchy interface
+- [ ] **permissions/scope.go** - Utilitários para escopos (implementações)
+  - [ ] Implementação das interfaces de Scope
   - [ ] Scope parsing e validation
   - [ ] Hierarchical scopes
   - [ ] Scope intersection/union
@@ -271,18 +313,23 @@ Criar uma camada de abstração unificada sobre bibliotecas populares de autenti
 ## 📝 Notas de Implementação
 
 ### Princípios de Design
-1. **Interfaces First**: Definir interfaces antes de implementações
-2. **Adapter Pattern**: Usar adaptadores para bibliotecas externas
-3. **Options Pattern**: Configuração flexível via opções funcionais
-4. **Minimal Dependencies**: Adicionar dependências apenas quando necessário
-5. **Backward Compatibility**: Manter compatibilidade entre versões
+1. **Interfaces First**: Definir TODAS as interfaces em `contracts/interfaces.go` antes de implementações - SEM EXCEÇÕES
+2. **Zero Dependency Cycles**: TODAS as interfaces devem estar obrigatoriamente em `contracts/` para evitar dependências cíclicas
+3. **Adapter Pattern**: Usar adaptadores para bibliotecas externas
+4. **Options Pattern**: Configuração flexível via opções funcionais
+5. **Minimal Dependencies**: Adicionar dependências apenas quando necessário
+6. **Backward Compatibility**: Manter compatibilidade entre versões
+7. **Only Concrete Implementations**: Outros pacotes só podem conter implementações concretas das interfaces de `contracts/`
 
 ### Convenções de Código
-1. Seguir Go conventions (gofmt, golint, go vet)
-2. Documentação completa com exemplos
-3. Error handling explícito e específico
-4. Context-aware operations
-5. Thread-safe implementations quando aplicável
+1. **ZERO Importações Cíclicas**: TODAS as interfaces devem estar obrigatoriamente em `contracts/` - SEM EXCEÇÕES
+2. Seguir Go conventions (gofmt, golint, go vet)
+3. Documentação completa com exemplos
+4. Error handling explícito e específico
+5. Context-aware operations
+6. Thread-safe implementations quando aplicável
+7. **Interfaces First**: Definir TODAS as interfaces em `contracts/interfaces.go` antes de implementações
+8. **Adapters Over Implementations**: Criar adaptadores para bibliotecas existentes em vez de reimplementar
 
 ### Considerações de Performance
 1. Lazy loading de componentes pesados

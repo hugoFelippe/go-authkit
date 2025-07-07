@@ -72,9 +72,7 @@ storage/ ──┘
 ├── contracts/               # Interfaces, tipos e erros compartilhados (evita importação cíclica)
 │   ├── interfaces.go        # Todas as interfaces do sistema
 │   ├── types.go             # Tipos de dados compartilhados
-│   ├── errors.go            # Erros específicos com códigos identificadores
-│   ├── README.md            # Documentação do pacote contracts
-│   └── MIGRATION.md         # Guia de migração para contracts
+│   └── errors.go            # Erros específicos com códigos identificadores
 │
 ├── adapter/                 # Adaptadores para bibliotecas externas
 │   ├── oauth2.go            # Adaptador para bibliotecas OAuth2
@@ -94,7 +92,6 @@ storage/ ──┘
 │   └── scope.go             # Utilitários para verificação de escopos
 │
 ├── storage/                 # Interfaces de armazenamento
-│   ├── interfaces.go        # Definição de interfaces para armazenamento
 │   └── memory.go            # Implementação mínima em memória para testes
 │
 └── token/                   # Manipulação simplificada de tokens
@@ -334,18 +331,6 @@ func handleAuthError(err error) {
     }
 }
 ```
-
-## 🔄 Migração e Compatibilidade
-
-### Para Usuários Existentes
-Se você já estava usando uma versão anterior do AuthKit, consulte o [guia de migração](./contracts/MIGRATION.md) para atualizar seu código para usar o novo pacote `contracts/`.
-
-### Benefícios da Nova Arquitetura
-- ✅ **Elimina importações cíclicas** entre pacotes
-- ✅ **API mais limpa** com interfaces centralizadas
-- ✅ **Melhor extensibilidade** para implementações personalizadas
-- ✅ **Compatibilidade** mantida através de interfaces estáveis
-- ✅ **Testabilidade** aprimorada com mocks mais fáceis
 
 ### Estrutura de Pacotes
 - `contracts/` - Interfaces, tipos e erros (público e extensível)

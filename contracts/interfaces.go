@@ -258,3 +258,151 @@ type APIKeyStorage interface {
 	List(ctx context.Context, userID string) ([]*APIKeyData, error)
 	DeleteByUser(ctx context.Context, userID string) error
 }
+
+// TokenStorage interface para armazenamento específico de tokens
+type TokenStorage interface {
+	// StoreToken armazena um token com sua expiração
+	StoreToken(ctx context.Context, token string, claims *Claims, expiry time.Duration) error
+
+	// GetToken recupera as claims de um token
+	GetToken(ctx context.Context, token string) (*Claims, error)
+
+	// DeleteToken remove um token do armazenamento
+	DeleteToken(ctx context.Context, token string) error
+
+	// DeleteAllTokens remove todos os tokens de um usuário
+	DeleteAllTokens(ctx context.Context, userID string) error
+
+	// IsRevoked verifica se um token foi revogado
+	IsRevoked(ctx context.Context, token string) (bool, error)
+
+	// RevokeToken revoga um token específico
+	RevokeToken(ctx context.Context, token string) error
+
+	// RevokeAllTokens revoga todos os tokens de um usuário
+	RevokeAllTokens(ctx context.Context, userID string) error
+
+	// Cleanup remove tokens expirados
+	Cleanup(ctx context.Context) error
+}
+
+// UserStorage interface para armazenamento específico de usuários
+type UserStorage interface {
+	// StoreUser armazena um usuário
+	StoreUser(ctx context.Context, user *User) error
+
+	// GetUser recupera um usuário por ID
+	GetUser(ctx context.Context, userID string) (*User, error)
+
+	// GetUserByEmail recupera um usuário por email
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
+
+	// GetUserByUsername recupera um usuário por username
+	GetUserByUsername(ctx context.Context, username string) (*User, error)
+
+	// UpdateUser atualiza um usuário existente
+	UpdateUser(ctx context.Context, user *User) error
+
+	// DeleteUser remove um usuário
+	DeleteUser(ctx context.Context, userID string) error
+
+	// ListUsers lista usuários com paginação
+	ListUsers(ctx context.Context, offset, limit int) ([]*User, error)
+
+	// CountUsers conta o total de usuários
+	CountUsers(ctx context.Context) (int64, error)
+}
+
+// SessionStorage interface para armazenamento específico de sessões
+type SessionStorage interface {
+	// StoreSession armazena uma sessão
+	StoreSession(ctx context.Context, session *Session) error
+
+	// GetSession recupera uma sessão por ID
+	GetSession(ctx context.Context, sessionID string) (*Session, error)
+
+	// DeleteSession remove uma sessão
+	DeleteSession(ctx context.Context, sessionID string) error
+
+	// DeleteAllSessions remove todas as sessões de um usuário
+	DeleteAllSessions(ctx context.Context, userID string) error
+
+	// GetUserSessions recupera todas as sessões ativas de um usuário
+	GetUserSessions(ctx context.Context, userID string) ([]*Session, error)
+
+	// Cleanup remove sessões expiradas
+	Cleanup(ctx context.Context) error
+}
+
+// ConfigStorage interface para armazenamento de configurações
+type ConfigStorage interface {
+	// Set define um valor de configuração
+	Set(ctx context.Context, key string, value interface{}, expiry time.Duration) error
+
+	// Get recupera um valor de configuração
+	Get(ctx context.Context, key string) (interface{}, error)
+
+	// Delete remove uma configuração
+	Delete(ctx context.Context, key string) error
+
+	// Exists verifica se uma chave existe
+	Exists(ctx context.Context, key string) (bool, error)
+
+	// GetAll recupera todas as configurações
+	GetAll(ctx context.Context) (map[string]interface{}, error)
+
+	// Clear remove todas as configurações
+	Clear(ctx context.Context) error
+}
+
+// CacheStorage interface para cache genérico com TTL
+type CacheStorage interface {
+	// SetCache armazena um valor com TTL opcional
+	SetCache(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+
+	// GetCache recupera um valor
+	GetCache(ctx context.Context, key string) (interface{}, error)
+
+	// DeleteCache remove um valor
+	DeleteCache(ctx context.Context, key string) error
+
+	// ExistsCache verifica se uma chave existe
+	ExistsCache(ctx context.Context, key string) (bool, error)
+
+	// TTL retorna o tempo de vida restante de uma chave
+	TTL(ctx context.Context, key string) (time.Duration, error)
+
+	// Expire define um novo TTL para uma chave
+	Expire(ctx context.Context, key string, ttl time.Duration) error
+
+	// Keys lista todas as chaves com um padrão opcional
+	Keys(ctx context.Context, pattern string) ([]string, error)
+
+	// ClearCache remove todas as chaves
+	ClearCache(ctx context.Context) error
+
+	// Size retorna o número de chaves armazenadas
+	Size(ctx context.Context) (int64, error)
+}
+
+// HealthChecker interface para verificação de saúde do storage
+type HealthChecker interface {
+	// Ping verifica se o storage está acessível
+	Ping(ctx context.Context) error
+
+	// Stats retorna estatísticas do storage
+	Stats(ctx context.Context) (map[string]interface{}, error)
+}
+
+// StorageManager interface que combina todos os tipos de storage
+type StorageManager interface {
+	TokenStorage
+	UserStorage
+	SessionStorage
+	ConfigStorage
+	CacheStorage
+	HealthChecker
+
+	// Close fecha a conexão com o storage
+	Close() error
+}

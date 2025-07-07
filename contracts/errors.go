@@ -7,9 +7,19 @@ const (
 	ErrCodeInvalidToken       = "INVALID_TOKEN"
 	ErrCodeExpiredToken       = "EXPIRED_TOKEN"
 	ErrCodeTokenNotFound      = "TOKEN_NOT_FOUND"
+	ErrCodeTokenRevoked       = "TOKEN_REVOKED"
 	ErrCodeInvalidCredentials = "INVALID_CREDENTIALS"
 	ErrCodeUserNotFound       = "USER_NOT_FOUND"
 	ErrCodeUserInactive       = "USER_INACTIVE"
+	ErrCodeUserEmailExists    = "USER_EMAIL_EXISTS"
+	ErrCodeUserUsernameExists = "USER_USERNAME_EXISTS"
+	ErrCodeInvalidUserID      = "INVALID_USER_ID"
+	ErrCodeSessionNotFound    = "SESSION_NOT_FOUND"
+	ErrCodeSessionExpired     = "SESSION_EXPIRED"
+	ErrCodeInvalidSession     = "INVALID_SESSION"
+	ErrCodeInvalidSessionID   = "INVALID_SESSION_ID"
+	ErrCodeConfigNotFound     = "CONFIG_NOT_FOUND"
+	ErrCodeCacheKeyNotFound   = "CACHE_KEY_NOT_FOUND"
 	ErrCodeInsufficientScope  = "INSUFFICIENT_SCOPE"
 	ErrCodeInsufficientRole   = "INSUFFICIENT_ROLE"
 	ErrCodePermissionDenied   = "PERMISSION_DENIED"
@@ -24,8 +34,6 @@ const (
 	ErrCodeUnauthorized       = "UNAUTHORIZED"
 	ErrCodeForbidden          = "FORBIDDEN"
 	ErrCodeRateLimitExceeded  = "RATE_LIMIT_EXCEEDED"
-	ErrCodeSessionExpired     = "SESSION_EXPIRED"
-	ErrCodeInvalidSession     = "INVALID_SESSION"
 )
 
 // AuthError representa um erro de autenticação com código específico.
@@ -60,9 +68,19 @@ var (
 	ErrInvalidToken       = NewAuthError(ErrCodeInvalidToken, "invalid token", nil)
 	ErrExpiredToken       = NewAuthError(ErrCodeExpiredToken, "token expired", nil)
 	ErrTokenNotFound      = NewAuthError(ErrCodeTokenNotFound, "token not found", nil)
+	ErrTokenRevoked       = NewAuthError(ErrCodeTokenRevoked, "token revoked", nil)
 	ErrInvalidCredentials = NewAuthError(ErrCodeInvalidCredentials, "invalid credentials", nil)
 	ErrUserNotFound       = NewAuthError(ErrCodeUserNotFound, "user not found", nil)
 	ErrUserInactive       = NewAuthError(ErrCodeUserInactive, "user inactive", nil)
+	ErrUserEmailExists    = NewAuthError(ErrCodeUserEmailExists, "user email already exists", nil)
+	ErrUserUsernameExists = NewAuthError(ErrCodeUserUsernameExists, "username already exists", nil)
+	ErrInvalidUserID      = NewAuthError(ErrCodeInvalidUserID, "invalid user ID", nil)
+	ErrSessionNotFound    = NewAuthError(ErrCodeSessionNotFound, "session not found", nil)
+	ErrSessionExpired     = NewAuthError(ErrCodeSessionExpired, "session expired", nil)
+	ErrInvalidSession     = NewAuthError(ErrCodeInvalidSession, "invalid session", nil)
+	ErrInvalidSessionID   = NewAuthError(ErrCodeInvalidSessionID, "invalid session ID", nil)
+	ErrConfigNotFound     = NewAuthError(ErrCodeConfigNotFound, "configuration not found", nil)
+	ErrCacheKeyNotFound   = NewAuthError(ErrCodeCacheKeyNotFound, "cache key not found", nil)
 	ErrInsufficientScope  = NewAuthError(ErrCodeInsufficientScope, "insufficient scope", nil)
 	ErrInsufficientRole   = NewAuthError(ErrCodeInsufficientRole, "insufficient role", nil)
 	ErrPermissionDenied   = NewAuthError(ErrCodePermissionDenied, "permission denied", nil)
@@ -77,8 +95,6 @@ var (
 	ErrUnauthorized       = NewAuthError(ErrCodeUnauthorized, "unauthorized", nil)
 	ErrForbidden          = NewAuthError(ErrCodeForbidden, "forbidden", nil)
 	ErrRateLimitExceeded  = NewAuthError(ErrCodeRateLimitExceeded, "rate limit exceeded", nil)
-	ErrSessionExpired     = NewAuthError(ErrCodeSessionExpired, "session expired", nil)
-	ErrInvalidSession     = NewAuthError(ErrCodeInvalidSession, "invalid session", nil)
 )
 
 // IsAuthError verifica se um erro é do tipo AuthError.
